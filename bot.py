@@ -60,7 +60,17 @@ def schedule_all():
 
     for hour in barrier_hours:
         scheduler.add_job(send_alert, 'cron', hour=(hour - 1) % 24, minute=55, args=["barrier", "5분 후 불길한 소환의 결계가 생성됩니다!", hour])
-        scheduler.add_job(send_alert, 'cron'림", style=discord.ButtonStyle.primary)
+        scheduler.add_job(send_alert, 'cron', hour=hour, minute=0, args=["barrier", "불길한 소환의 결계가 생성되었습니다!", hour])
+
+    for hour in field_hours:
+        scheduler.add_job(send_alert, 'cron', hour=(hour - 1) % 24, minute=55, args=["field", "5분 후 필드보스가 등장합니다!", hour])
+        scheduler.add_job(send_alert, 'cron', hour=hour, minute=0, args=["field", "필드보스가 등장했습니다!", hour])
+
+class AlertSettingView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @discord.ui.button(label="결계-모든시간", style=discord.ButtonStyle.primary)
     async def all_barrier(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.set_setting(interaction, "all")
 
@@ -72,7 +82,7 @@ def schedule_all():
     async def no_field(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.set_setting(interaction, "no_field")
 
-    @discord.ui.button(label="모든 알림 제외", style=discord.ButtonStyle.danger)
+    @discord.ui.button(label="모든 알림 끄기", style=discord.ButtonStyle.danger)
     async def off(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.set_setting(interaction, "off")
 
@@ -92,10 +102,10 @@ async def on_ready():
         await client.wait_until_ready()
         channel = client.get_channel(CHANNEL_ID)
         await channel.send(
-            content="\ud83d\udce3\ufe0f \ud544\ub4dc/\uacbd\uacc4 \uc54c\ub9bc \uc124\uc815 \ubc84\ud2bc\uc744 \ub204\ub974\uc5b4 \uc54c\ub9bc \uc218\uc2e0 \uc0c1\ud0dc\ub97c \uc120\ud0dd\ud558\uc138\uc694!",
+            content="📣 필드/결계 알림 설정 버튼을 눌러 알림 수신 상태를 선택하세요!",
             view=AlertSettingView()
         )
     except Exception as e:
-        print("\ucd08\uae30 \uba54\uc2dc\uc9c0 \uc804\uc1a1 \uc2e4\ud328:", e)
+        print("초기 메시지 전송 실패:", e)
 
 client.run(TOKEN)
