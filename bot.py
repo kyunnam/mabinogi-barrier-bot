@@ -31,7 +31,7 @@ def save_settings(settings):
     with open(SETTINGS_FILE, 'w', encoding='utf-8') as f:
         json.dump(settings, f, indent=2)
 
-def get_users_to_notify(content_type, hour):
+def get_users_to_notify(content_type, hour, is_warning):
     settings = load_settings()
     result = []
     for user_id, mode in settings.items():
@@ -40,17 +40,19 @@ def get_users_to_notify(content_type, hour):
         if content_type == "field" and mode == "no_field":
             continue
         if content_type == "barrier":
-            if mode == "night_exclude" and hour in [0, 3, 6]:
+            if mode == "night_exclude" and hour in [3, 6]:
+                continue
+            if mode == "night_exclude" and is_warning and ((hour + 1) % 24) in [3, 6]:
                 continue
         result.append(int(user_id))
     return result
 
-async def send_alert(content_type, message, hour):
+async def send_alert(content_type, message, hour, is_warning=False):
     channel = client.get_channel(CHANNEL_ID)
     if not channel:
         return
 
-    users = get_users_to_notify(content_type, hour)
+    users = get_users_to_notify(content_type, hour, is_warning)
     mentions = " ".join(f"<@{uid}>" for uid in users)
     await channel.send(f"{mentions} {message}" if mentions else f"🔔 {message}")
 
@@ -59,12 +61,12 @@ def schedule_all():
     field_hours = [12, 18, 20, 22]
 
     for hour in barrier_hours:
-        scheduler.add_job(send_alert, 'cron', hour=(hour - 1) % 24, minute=55, args=["barrier", "5분 후 불길한 소환의 결계가 생성됩니다!", hour])
-        scheduler.add_job(send_alert, 'cron', hour=hour, minute=0, args=["barrier", "불길한 소환의 결계가 생성되었습니다!", hour])
+        scheduler.add_job(send_alert, 'cron', hour=(hour - 1) % 24, minute=55, args=["barrier", "5분 후 불길한 소환의 결계가 생성됩니다!", hour, True])
+        scheduler.add_job(send_alert, 'cron', hour=hour, minute=0, args=["barrier", "불길한 소환의 결계가 생성되었습니다!", hour, False])
 
     for hour in field_hours:
-        scheduler.add_job(send_alert, 'cron', hour=(hour - 1) % 24, minute=55, args=["field", "5분 후 필드보스가 등장합니다!", hour])
-        scheduler.add_job(send_alert, 'cron', hour=hour, minute=0, args=["field", "필드보스가 등장했습니다!", hour])
+        scheduler.add_job(send_alert, 'cron', hour=(hour - 1) % 24, minute=55, args=["field", "5분 후 필드보스가 등장합니다!", hour, True])
+        scheduler.add_job(send_alert, 'cron', hour=hour, minute=0, args=["field", "필드보스가 등장했습니다!", hour, False])
 
 class AlertSettingView(discord.ui.View):
     def __init__(self):
@@ -109,3 +111,4 @@ async def on_ready():
         print("초기 메시지 전송 실패:", e)
 
 client.run(TOKEN)
+
